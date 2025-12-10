@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ごてごて - ぷよぷよ風パズル</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      padding: 0;
+      margin: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #fdfbfb, #ebedee);
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    #app {
+      background: rgba(255, 255, 255, 0.96);
+      border-radius: 18px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+      padding: 16px 20px 20px;
+      max-width: 960px;
+      width: 100%;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+    }
+
+    header small {
+      opacity: 0.7;
+      font-size: 0.8rem;
+    }
+
+    nav {
+      display: flex;
+      gap: 8px;
+    }
+
+    .tab-btn {
+      border: none;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: #f0f0f5;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .tab-btn span.icon {
+      font-size: 1.1rem;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(120deg, #6c5ce7, #a55eea);
+      color: #fff;
+    }
+
+    .tab-btn:active {
+      transform: translateY(1px);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.3fr);
+      gap: 20px;
+    }
+
+    section {
+      border-radius: 14px;
+      background: #fafbff;
+      padding: 12px 14px 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    section h2 {
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    section h2 span.label-sub {
+      font-size: 0.75rem;
+      opacity: 0.7;
+    }
+
+    #gote-select-screen { display: none; }
+    #gote-select-screen.active { display: block; }
+
+    #game-screen { display: block; }
+    #game-screen.hidden { display: none; }
+
+    /* Game area */
+    #game-wrapper {
+      display: flex;
+      gap: 10px;
+    }
+
+    #board-container {
+      position: relative;
+      padding: 8px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #cfd9df, #e2ebf0);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.5);
+    }
+
+    #board {
+      width: 240px; /* 6 * 40 */
+      height: 480px; /* 12 * 40 */
+      background: #1e272e;
+      border-radius: 8px;
+      padding: 4px;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      grid-template-rows: repeat(12, 1fr);
+      gap: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cell {
+      background: rgba(255,255,255,0.03);
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .gote {
+      position: absolute;
+      inset: 2px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      pointer-events: none;
+      --gote-color: #ff4b5c;
+    }
+
+    .gote-inner {
+      width: 90%;
+      height: 90%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.9), var(--gote-color));
+      box-shadow:
+        0 0 0 2px rgba(255,255,255,0.6),
+        0 4px 10px rgba(0, 0, 0, 0.4);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .gote-inner img {
+      max-width: 95%;
+      max-height: 95%;
+      image-rendering: pixelated;
+    }
+
+    .gote.clearing .gote-inner {
+      animation: gote-pop 450ms ease-out forwards;
+    }
+
+    @keyframes gote-pop {
+      0% { transform: scale(1) rotate(0deg); opacity: 1; }
+      25% { transform: scale(1.15) rotate(-6deg); }
+      50% { transform: scale(0.95) rotate(6deg); }
+      100% { transform: scale(0); opacity: 0; }
+    }
+
+    #info-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+
+    .info-box {
+      background: rgba(255,255,255,0.9);
+      border-radius: 10px;
+      padding: 8px 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+
+    .info-row:last-child { margin-bottom: 0; }
+
+    #next-preview {
+      display: grid;
+      grid-template-columns: repeat(2, 30px);
+      grid-template-rows: repeat(2, 30px);
+      gap: 2px;
+      margin-top: 4px;
+    }
+
+    #next-preview .preview-cell {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      background: #1e272e;
+      position: relative;
+    }
+
+    .preview-gote {
+      --gote-color: #ff4b5c;
+      position: absolute;
+      inset: 2px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .preview-gote-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.9), var(--gote-color));
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .preview-gote-inner img {
+      max-width: 95%;
+      max-height: 95%;
+      image-rendering: pixelated;
+    }
+
+    #controls-list {
+      font-size: 0.8rem;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    /* タッチ操作ボタン */
+    #touch-controls {
+      display: none;
+    }
+
+    .touch-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      background: #f0f0f5;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+      min-width: 64px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+
+    .touch-btn span.icon {
+      font-size: 1.1rem;
+    }
+
+    .touch-btn:active {
+      transform: translateY(1px);
+    }
+
+    #game-over-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      z-index: 10;
+      text-align: center;
+    }
+
+    #game-over-overlay.active {
+      display: flex;
+    }
+
+    #game-over-overlay button {
+      margin-top: 10px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: none;
+      background: #ff7675;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    /* Gote select screen */
+    #gote-select-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+
+    .slot-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 8px;
+      align-items: center;
+      background: rgba(255,255,255,0.9);
+      padding: 8px 10px;
+      border-radius: 10px;
+    }
+
+    .slot-label {
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .slot-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .slot-preview {
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      background: #eee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .slot-preview-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.9), var(--gote-color));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slot-preview-inner img {
+      max-width: 90%;
+      max-height: 90%;
+      image-rendering: pixelated;
+    }
+
+    .slot-config {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+    }
+
+    .slot-config-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .slot-config-row label {
+      font-size: 0.75rem;
+      opacity: 0.8;
+      white-space: nowrap;
+    }
+
+    select, input[type="color"] {
+      font-size: 0.8rem;
+      padding: 2px 4px;
+      border-radius: 6px;
+      border: 1px solid #dcdde1;
+      background: #fff;
+    }
+
+    #apply-config {
+      align-self: flex-end;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(120deg, #6c5ce7, #a55eea);
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin-top: 2px;
+    }
+
+        @media (max-width: 820px) {
+      #app {
+        max-width: 100%;
+        height: 100vh;
+        border-radius: 0;
+      }
+      main {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+      }
+      #game-wrapper {
+        flex-direction: column;
+      }
+      #touch-controls {
+        display: flex;
+        margin-top: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+      }
+    }
+      main {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>ごてごて</h1>
+      <small>ぷよぷよもどき / 矢印キーで操作</small>
+    </header>
+
+    <nav>
+      <button class="tab-btn active" id="tab-game">
+        <span class="icon">🎮</span><span>ゲーム</span>
+      </button>
+      <button class="tab-btn" id="tab-select">
+        <span class="icon">🧸</span><span>ごてセレクト</span>
+      </button>
+    </nav>
+
+    <main>
+      <section id="game-screen">
+        <h2>プレイ画面 <span class="label-sub">/ ごてごて本編</span></h2>
+        <div id="game-wrapper">
+          <div id="board-container">
+            <div id="board"></div>
+            <div id="game-over-overlay">
+              <div>ゲームオーバー…！<br>もういちど遊ぶ？</div>
+              <button id="restart-btn">リスタート</button>
+            </div>
+          </div>
+          <div id="info-panel">
+            <div class="info-box">
+              <div class="info-row"><span>スコア</span><strong id="score">0</strong></div>
+              <div class="info-row"><span>れんさ</span><strong id="chain">0</strong></div>
+            </div>
+            <div class="info-box">
+              <div>つぎのごて</div>
+              <div id="next-preview">
+                <div class="preview-cell" data-pos="0"></div>
+                <div class="preview-cell" data-pos="1"></div>
+                <div class="preview-cell" data-pos="2"></div>
+                <div class="preview-cell" data-pos="3"></div>
+              </div>
+            </div>
+            <div class="info-box" id="controls-list">
+              <div>▶ 操作</div>
+              <div>← / → : 移動</div>
+              <div>↓ : ソフトドロップ</div>
+              <div>Z / ↑ : 左回転</div>
+              <div>X : 右回転</div>
+              <div>スペース : 一気に落下</div>
+            </div>
+          </div>
+        </div>
+        <div id="touch-controls">
+          <button class="touch-btn" id="btn-left"><span class="icon">⬅️</span><span>左</span></button>
+          <button class="touch-btn" id="btn-right"><span class="icon">➡️</span><span>右</span></button>
+          <button class="touch-btn" id="btn-rot-left"><span class="icon">⤿</span><span>回転L</span></button>
+          <button class="touch-btn" id="btn-rot-right"><span class="icon">⤾</span><span>回転R</span></button>
+          <button class="touch-btn" id="btn-down"><span class="icon">⬇️</span><span>おろす</span></button>
+          <button class="touch-btn" id="btn-drop"><span class="icon">💥</span><span>いっき落下</span></button>
+        </div>
+      </section>
+
+      <section id="gote-select-screen">
+        <h2>ごてセレクト画面 <span class="label-sub">/ 色＆キャラカスタム</span></h2>
+        <div id="gote-select-layout">
+          <p style="font-size:0.8rem; opacity:0.8;">4種類のごての色とキャラクターを好きに設定できます。変更すると新しく落ちてくるごてに反映されます。</p>
+
+          <div id="slots-container"></div>
+
+          <button id="apply-config">この設定であそぶ</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // ========================
+    // ごて定義
+    // ========================
+    const CHARACTERS = {
+      arca: {
+        id: 'arca',
+        label: 'アルカ',
+        defaultColor: '#ff4b5c', // red
+        img: 'アルカ.png' // 画像パスは適宜差し替えてください
+      },
+      killroad: {
+        id: 'killroad',
+        label: 'キルロード',
+        defaultColor: '#ffd93b', // yellow
+        img: 'キルロード.png'
+      },
+      koto: {
+        id: 'koto',
+        label: 'コト',
+        defaultColor: '#4b7bec', // blue
+        img: 'コト.png'
+      },
+      asha: {
+        id: 'asha',
+        label: 'アーシャ',
+        defaultColor: '#a55eea', // purple
+        img: 'アーシャ.png'
+      },
+      kyubi: {
+        id: 'kyubi',
+        label: 'キュビ',
+        defaultColor: '#1abc9c', // お好みカラー
+        img: 'キュビ.png'
+      }
+    };
+
+    // 4種類のごてスロット（種類）
+    let goteSlots = [
+      { slot: 0, charId: 'arca', color: CHARACTERS.arca.defaultColor },
+      { slot: 1, charId: 'killroad', color: CHARACTERS.killroad.defaultColor },
+      { slot: 2, charId: 'koto', color: CHARACTERS.koto.defaultColor },
+      { slot: 3, charId: 'asha', color: CHARACTERS.asha.defaultColor }
+    ];
+
+    // ========================
+    // 画面切り替え
+    // ========================
+    const tabGame = document.getElementById('tab-game');
+    const tabSelect = document.getElementById('tab-select');
+    const gameScreen = document.getElementById('game-screen');
+    const selectScreen = document.getElementById('gote-select-screen');
+
+    tabGame.addEventListener('click', () => {
+      tabGame.classList.add('active');
+      tabSelect.classList.remove('active');
+      gameScreen.classList.remove('hidden');
+      selectScreen.classList.remove('active');
+    });
+
+    tabSelect.addEventListener('click', () => {
+      tabSelect.classList.add('active');
+      tabGame.classList.remove('active');
+      gameScreen.classList.add('hidden');
+      selectScreen.classList.add('active');
+    });
+
+    // ========================
+    // ごてセレクトUI
+    // ========================
+    const slotsContainer = document.getElementById('slots-container');
+
+    function createSlotRow(slotConfig) {
+      const row = document.createElement('div');
+      row.className = 'slot-row';
+      row.dataset.slot = slotConfig.slot;
+
+      const label = document.createElement('div');
+      label.className = 'slot-label';
+      label.textContent = `ごて ${slotConfig.slot + 1}`;
+
+      const main = document.createElement('div');
+      main.className = 'slot-main';
+
+      const preview = document.createElement('div');
+      preview.className = 'slot-preview';
+      const previewInner = document.createElement('div');
+      previewInner.className = 'slot-preview-inner';
+      previewInner.style.setProperty('--gote-color', slotConfig.color);
+      const img = document.createElement('img');
+      img.alt = 'ごてプレビュー';
+      img.src = CHARACTERS[slotConfig.charId].img;
+      previewInner.appendChild(img);
+      preview.appendChild(previewInner);
+
+      const config = document.createElement('div');
+      config.className = 'slot-config';
+
+      const row1 = document.createElement('div');
+      row1.className = 'slot-config-row';
+      const charLabel = document.createElement('label');
+      charLabel.textContent = 'キャラ';
+      const select = document.createElement('select');
+      select.className = 'char-select';
+      select.dataset.slot = slotConfig.slot;
+
+      Object.values(CHARACTERS).forEach(ch => {
+        const opt = document.createElement('option');
+        opt.value = ch.id;
+        opt.textContent = ch.label;
+        if (ch.id === slotConfig.charId) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      row1.appendChild(charLabel);
+      row1.appendChild(select);
+
+      const row2 = document.createElement('div');
+      row2.className = 'slot-config-row';
+      const colorLabel = document.createElement('label');
+      colorLabel.textContent = 'カラー';
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.value = slotConfig.color;
+      colorInput.className = 'color-input';
+      colorInput.dataset.slot = slotConfig.slot;
+
+      row2.appendChild(colorLabel);
+      row2.appendChild(colorInput);
+
+      config.appendChild(row1);
+      config.appendChild(row2);
+
+      main.appendChild(preview);
+      main.appendChild(config);
+
+      const miniInfo = document.createElement('div');
+      miniInfo.style.fontSize = '0.75rem';
+      miniInfo.style.opacity = '0.75';
+      miniInfo.textContent = CHARACTERS[slotConfig.charId].label;
+
+      row.appendChild(label);
+      row.appendChild(main);
+      row.appendChild(miniInfo);
+
+      // イベント
+      select.addEventListener('change', () => {
+        const slot = parseInt(select.dataset.slot, 10);
+        const newChar = select.value;
+        const slotCfg = goteSlots[slot];
+        slotCfg.charId = newChar;
+        img.src = CHARACTERS[newChar].img;
+        miniInfo.textContent = CHARACTERS[newChar].label;
+      });
+
+      colorInput.addEventListener('input', () => {
+        const slot = parseInt(colorInput.dataset.slot, 10);
+        const c = colorInput.value;
+        const slotCfg = goteSlots[slot];
+        slotCfg.color = c;
+        previewInner.style.setProperty('--gote-color', c);
+      });
+
+      return row;
+    }
+
+    function buildSlotsUI() {
+      slotsContainer.innerHTML = '';
+      goteSlots.forEach(slotCfg => {
+        const row = createSlotRow(slotCfg);
+        slotsContainer.appendChild(row);
+      });
+    }
+
+    // ========================
+    // ゲーム本体
+    // ========================
+    const COLS = 6;
+    const ROWS = 12;
+    const TICK_MS = 550;
+
+    let board = []; // [y][x] = {slotIndex, charId, color, clearing:false}
+    let currentPair = null;
+    let nextPair = null;
+    let score = 0;
+    let chainCount = 0;
+    let tickTimer = null;
+    let isClearing = false;
+    let isGameOver = false;
+
+    const scoreEl = document.getElementById('score');
+    const chainEl = document.getElementById('chain');
+    const boardEl = document.getElementById('board');
+    const gameOverOverlay = document.getElementById('game-over-overlay');
+    const restartBtn = document.getElementById('restart-btn');
+
+    function initBoard() {
+      board = [];
+      for (let y = 0; y < ROWS; y++) {
+        const row = [];
+        for (let x = 0; x < COLS; x++) {
+          row.push(null);
+        }
+        board.push(row);
+      }
+    }
+
+    function randomSlotIndex() {
+      return Math.floor(Math.random() * goteSlots.length);
+    }
+
+    function createRandomGote() {
+      const idx = randomSlotIndex();
+      const slotCfg = goteSlots[idx];
+      const ch = CHARACTERS[slotCfg.charId];
+      return {
+        slotIndex: idx,
+        charId: slotCfg.charId,
+        color: slotCfg.color,
+        img: ch.img
+      };
+    }
+
+    function spawnPair() {
+      if (!nextPair) {
+        nextPair = {
+          pivot: createRandomGote(),
+          child: createRandomGote()
+        };
+      }
+      currentPair = {
+        x: 2,
+        y: -1,
+        orientation: 2, // 子が下
+        pivot: nextPair.pivot,
+        child: nextPair.child
+      };
+      nextPair = {
+        pivot: createRandomGote(),
+        child: createRandomGote()
+      };
+      updateNextPreview();
+      if (checkCollisionForPair(currentPair.x, currentPair.y, currentPair.orientation)) {
+        // 置く前からアウト
+        gameOver();
+      }
+    }
+
+    function getPairCells(x, y, orientation) {
+      const cells = [];
+      // pivot
+      cells.push({ x, y, part: 'pivot' });
+      // child offset
+      let dx = 0, dy = 0;
+      switch (orientation) {
+        case 0: dy = -1; break; // 上
+        case 1: dx = 1; break;  // 右
+        case 2: dy = 1; break;  // 下
+        case 3: dx = -1; break; // 左
+      }
+      cells.push({ x: x + dx, y: y + dy, part: 'child' });
+      return cells;
+    }
+
+    function checkCollisionForPair(nx, ny, norient) {
+      const cells = getPairCells(nx, ny, norient);
+      for (const c of cells) {
+        if (c.x < 0 || c.x >= COLS || c.y >= ROWS) return true;
+        if (c.y >= 0 && board[c.y][c.x]) return true;
+      }
+      return false;
+    }
+
+    function movePair(dx, dy) {
+      if (!currentPair || isClearing || isGameOver) return;
+      const nx = currentPair.x + dx;
+      const ny = currentPair.y + dy;
+      if (!checkCollisionForPair(nx, ny, currentPair.orientation)) {
+        currentPair.x = nx;
+        currentPair.y = ny;
+        render();
+        return true;
+      }
+      return false;
+    }
+
+    function rotatePair(dir) {
+      if (!currentPair || isClearing || isGameOver) return;
+      let norient = currentPair.orientation;
+      if (dir === 'left') {
+        norient = (norient + 3) % 4;
+      } else {
+        norient = (norient + 1) % 4;
+      }
+      if (!checkCollisionForPair(currentPair.x, currentPair.y, norient)) {
+        currentPair.orientation = norient;
+        render();
+      }
+    }
+
+    function hardDrop() {
+      if (!currentPair || isClearing || isGameOver) return;
+      while (movePair(0, 1));
+      lockPair();
+    }
+
+    function lockPair() {
+      if (!currentPair) return;
+      const cells = getPairCells(currentPair.x, currentPair.y, currentPair.orientation);
+      cells.forEach(c => {
+        if (c.y < 0) {
+          gameOver();
+          return;
+        }
+        const data = c.part === 'pivot' ? currentPair.pivot : currentPair.child;
+        if (c.y >= 0) {
+          board[c.y][c.x] = {
+            slotIndex: data.slotIndex,
+            charId: data.charId,
+            color: data.color,
+            img: data.img,
+            clearing: false
+          };
+        }
+      });
+      currentPair = null;
+      render();
+      checkAndClearMatches();
+    }
+
+    function tick() {
+      if (isClearing || isGameOver) return;
+      if (!currentPair) {
+        spawnPair();
+        render();
+        return;
+      }
+      const moved = movePair(0, 1);
+      if (!moved) {
+        lockPair();
+      }
+    }
+
+    function render() {
+      // 盤面セル
+      boardEl.innerHTML = '';
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          const cellEl = document.createElement('div');
+          cellEl.className = 'cell';
+          cellEl.dataset.x = x;
+          cellEl.dataset.y = y;
+          boardEl.appendChild(cellEl);
+        }
+      }
+
+      // ごて描画用マップ
+      const goteMap = {};
+
+      // 固定済み
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          const cell = board[y][x];
+          if (!cell) continue;
+          const key = `${x}-${y}`;
+          goteMap[key] = {
+            color: cell.color,
+            img: cell.img,
+            clearing: cell.clearing
+          };
+        }
+      }
+
+      // 落下中ペア
+      if (currentPair) {
+        const cells = getPairCells(currentPair.x, currentPair.y, currentPair.orientation);
+        cells.forEach(c => {
+          if (c.y < 0 || c.y >= ROWS) return;
+          const data = c.part === 'pivot' ? currentPair.pivot : currentPair.child;
+          const key = `${c.x}-${c.y}`;
+          goteMap[key] = {
+            color: data.color,
+            img: data.img,
+            clearing: false
+          };
+        });
+      }
+
+      // DOMに配置
+      const cellElements = boardEl.children;
+      for (let i = 0; i < cellElements.length; i++) {
+        const cellEl = cellElements[i];
+        const x = parseInt(cellEl.dataset.x, 10);
+        const y = parseInt(cellEl.dataset.y, 10);
+        const key = `${x}-${y}`;
+        const g = goteMap[key];
+        if (!g) continue;
+        const goteEl = document.createElement('div');
+        goteEl.className = 'gote';
+        if (g.clearing) goteEl.classList.add('clearing');
+        goteEl.style.setProperty('--gote-color', g.color);
+        const inner = document.createElement('div');
+        inner.className = 'gote-inner';
+        const img = document.createElement('img');
+        img.src = g.img;
+        img.alt = 'ごて';
+        inner.appendChild(img);
+        goteEl.appendChild(inner);
+        cellEl.appendChild(goteEl);
+      }
+    }
+
+    // マッチ判定
+    function checkAndClearMatches() {
+      const visited = [];
+      for (let y = 0; y < ROWS; y++) {
+        visited[y] = [];
+        for (let x = 0; x < COLS; x++) visited[y][x] = false;
+      }
+
+      const matches = [];
+
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          if (visited[y][x]) continue;
+          const cell = board[y][x];
+          if (!cell) continue;
+          const group = [];
+          const targetColor = cell.color;
+          const stack = [{ x, y }];
+          visited[y][x] = true;
+
+          while (stack.length) {
+            const { x: cx, y: cy } = stack.pop();
+            group.push({ x: cx, y: cy });
+            const dirs = [
+              { dx: 1, dy: 0 },
+              { dx: -1, dy: 0 },
+              { dx: 0, dy: 1 },
+              { dx: 0, dy: -1 }
+            ];
+            for (const d of dirs) {
+              const nx = cx + d.dx;
+              const ny = cy + d.dy;
+              if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+              if (visited[ny][nx]) continue;
+              const neighbor = board[ny][nx];
+              if (!neighbor) continue;
+              if (neighbor.color !== targetColor) continue;
+              visited[ny][nx] = true;
+              stack.push({ x: nx, y: ny });
+            }
+          }
+
+          if (group.length >= 4) {
+            matches.push(group);
+          }
+        }
+      }
+
+      if (matches.length === 0) {
+        chainCount = 0;
+        chainEl.textContent = chainCount;
+        return;
+      }
+
+      // マッチがあるので可愛いアニメーションしてから消す
+      isClearing = true;
+      chainCount += 1;
+      chainEl.textContent = chainCount;
+      const gain = matches.reduce((acc, g) => acc + g.length * 10 * chainCount, 0);
+      score += gain;
+      scoreEl.textContent = score;
+
+      matches.forEach(group => {
+        group.forEach(({ x, y }) => {
+          if (board[y][x]) board[y][x].clearing = true;
+        });
+      });
+
+      render();
+
+      setTimeout(() => {
+        // 実際に消す
+        matches.forEach(group => {
+          group.forEach(({ x, y }) => {
+            board[y][x] = null;
+          });
+        });
+        applyGravity();
+        isClearing = false;
+        render();
+        // 連鎖が続くか再チェック
+        checkAndClearMatches();
+      }, 500);
+    }
+
+    function applyGravity() {
+      for (let x = 0; x < COLS; x++) {
+        let writeY = ROWS - 1;
+        for (let y = ROWS - 1; y >= 0; y--) {
+          if (board[y][x]) {
+            if (y !== writeY) {
+              board[writeY][x] = board[y][x];
+              board[y][x] = null;
+            }
+            writeY--;
+          }
+        }
+      }
+    }
+
+    function updateNextPreview() {
+      const cells = document.querySelectorAll('#next-preview .preview-cell');
+      cells.forEach(c => (c.innerHTML = ''));
+      if (!nextPair) return;
+
+      const pieces = [nextPair.pivot, nextPair.child];
+      pieces.forEach((piece, index) => {
+        const cell = cells[index];
+        if (!cell) return;
+        const pg = document.createElement('div');
+        pg.className = 'preview-gote';
+        pg.style.setProperty('--gote-color', piece.color);
+        const inner = document.createElement('div');
+        inner.className = 'preview-gote-inner';
+        const img = document.createElement('img');
+        img.src = piece.img;
+        img.alt = '次のごて';
+        inner.appendChild(img);
+        pg.appendChild(inner);
+        cell.appendChild(pg);
+      });
+    }
+
+    function gameOver() {
+      isGameOver = true;
+      gameOverOverlay.classList.add('active');
+    }
+
+    function restartGame() {
+      isGameOver = false;
+      gameOverOverlay.classList.remove('active');
+      score = 0;
+      chainCount = 0;
+      scoreEl.textContent = '0';
+      chainEl.textContent = '0';
+      initBoard();
+      currentPair = null;
+      nextPair = null;
+      isClearing = false;
+      spawnPair();
+      render();
+    }
+
+    restartBtn.addEventListener('click', () => {
+      restartGame();
+    });
+
+    // キー操作（キーボード）
+    window.addEventListener('keydown', e => {
+      if (selectScreen.classList.contains('active')) return; // セレクト画面中は操作しない
+      switch (e.key) {
+        case 'ArrowLeft':
+        case 'a':
+        case 'A':
+          movePair(-1, 0);
+          break;
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          movePair(1, 0);
+          break;
+        case 'ArrowDown':
+        case 's':
+        case 'S':
+          movePair(0, 1);
+          break;
+        case 'z':
+        case 'Z':
+        case 'ArrowUp':
+          rotatePair('left');
+          break;
+        case 'x':
+        case 'X':
+          rotatePair('right');
+          break;
+        case ' ': // Space
+          e.preventDefault();
+          hardDrop();
+          break;
+      }
+    });
+
+    // タッチ操作（スマホ向け）
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const btnRotL = document.getElementById('btn-rot-left');
+    const btnRotR = document.getElementById('btn-rot-right');
+    const btnDown = document.getElementById('btn-down');
+    const btnDrop = document.getElementById('btn-drop');
+
+    function bindTapButton(el, handler) {
+      if (!el) return;
+      const wrap = (e) => {
+        e.preventDefault();
+        if (selectScreen.classList.contains('active')) return;
+        handler();
+      };
+      el.addEventListener('click', wrap);
+      el.addEventListener('touchstart', wrap, { passive: false });
+    }
+
+    bindTapButton(btnLeft, () => movePair(-1, 0));
+    bindTapButton(btnRight, () => movePair(1, 0));
+    bindTapButton(btnRotL, () => rotatePair('left'));
+    bindTapButton(btnRotR, () => rotatePair('right'));
+    bindTapButton(btnDown, () => movePair(0, 1));
+    bindTapButton(btnDrop, () => hardDrop());
+
+    // 設定反映ボタン
+    document.getElementById('apply-config').addEventListener('click', () => {
+      // すでに落ちているごては色そのまま、これ以降のランダム生成に反映
+      tabGame.click();
+    });
+
+    // 初期化
+    function init() {
+      buildSlotsUI();
+      initBoard();
+      spawnPair();
+      render();
+      if (tickTimer) clearInterval(tickTimer);
+      tickTimer = setInterval(tick, TICK_MS);
+    }
+
+    init();
+  </script>
+</body>
+</html>
